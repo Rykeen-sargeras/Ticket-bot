@@ -40,8 +40,15 @@ app.get('/login', (req, res) => {
 
 app.post('/login', (req, res) => {
   const { password } = req.body;
-  const validPasswords = (process.env.DASHBOARD_PASSWORD || '').split(',').map(p => p.trim());
-  if (validPasswords.includes(password)) {
+  // Collect passwords from both DASHBOARD_PASSWORD and DASHBOARD_PASSWORD_2
+  const passwords = [];
+  if (process.env.DASHBOARD_PASSWORD) {
+    process.env.DASHBOARD_PASSWORD.split(',').forEach(p => passwords.push(p.trim()));
+  }
+  if (process.env.DASHBOARD_PASSWORD_2) {
+    passwords.push(process.env.DASHBOARD_PASSWORD_2.trim());
+  }
+  if (passwords.includes(password)) {
     req.session.authenticated = true;
     return res.redirect('/');
   }
@@ -94,10 +101,52 @@ app.get('/giveaway/:id', requireAuth, (req, res) => {
 });
 
 // --- API routes ---
-app.post('/api/giveaway/create', requireAuth, (req, res) => {
+app.post('/api/giveaway/create', requireAuth, async (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: 'Name required' });
   const id = db.createGiveaway(name);
+
+  // Post the enter button to Discord
+  const client = getClient();
+  const channelId = process.env.GIVEAWAY_CHANNEL_ID;
+  if (client && isBotReady() && channelId) {
+    try {
+      const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+      const guild = client.guilds.cache.get(process.env.GUILD_ID);
+      if (guild) {
+        const channel = guild.channels.cache.get(channelId);
+        if (channel) {
+          const embed = new EmbedBuilder()
+            .setTitle('🎉 GIVEAWAY — ' + name)
+            .setDescription(
+              `Click the button below to enter!\n\n` +
+              `Your tickets are based on your role:\n` +
+              `🟡 **1% Gang** — 6 tickets\n` +
+              `🟢 **Short Shorts Gang** — 4 tickets\n` +
+              `🔵 **Scooter Gang** — 2 tickets\n` +
+              `🔴 **Banned Gang** — 1 ticket\n` +
+              `🚀 **Server Booster** — +1 bonus ticket\n\n` +
+              `Ticket numbers will be DM'd to you privately.`
+            )
+            .setColor(0x00cccc)
+            .setFooter({ text: `Giveaway #${id}` })
+            .setTimestamp();
+
+          const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId(`enter_giveaway_${id}`)
+              .setLabel('🎫 Enter Giveaway')
+              .setStyle(ButtonStyle.Success)
+          );
+
+          await channel.send({ embeds: [embed], components: [row] });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to post giveaway to Discord:', err);
+    }
+  }
+
   res.json({ success: true, id });
 });
 
