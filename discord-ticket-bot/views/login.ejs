@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Giveaway Dashboard — Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #0a0e1a;
+      --bg-card: #111827;
+      --bg-surface: #1a2332;
+      --teal: #00d4aa;
+      --teal-glow: rgba(0, 212, 170, 0.3);
+      --blue: #1e3a5f;
+      --blue-light: #2563eb;
+      --silver: #c0c8d4;
+      --silver-dim: #6b7b8d;
+      --red: #ff3b5c;
+      --red-glow: rgba(255, 59, 92, 0.3);
+      --font-display: 'Chakra Petch', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg-deep);
+      color: var(--silver);
+      font-family: var(--font-display);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Animated background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: 
+        radial-gradient(ellipse at 20% 50%, rgba(0, 212, 170, 0.05) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(30, 58, 95, 0.15) 0%, transparent 60%),
+        radial-gradient(ellipse at 50% 80%, rgba(255, 59, 92, 0.04) 0%, transparent 50%);
+      z-index: 0;
+    }
+
+    .login-container {
+      position: relative;
+      z-index: 1;
+      width: 420px;
+      max-width: 90vw;
+    }
+
+    .login-card {
+      background: var(--bg-card);
+      border: 1px solid rgba(0, 212, 170, 0.15);
+      border-radius: 16px;
+      padding: 48px 40px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .login-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--red), var(--teal), var(--blue-light));
+    }
+
+    .logo-section {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .logo-icon {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, var(--teal), var(--blue-light));
+      border-radius: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      margin-bottom: 16px;
+      box-shadow: 0 8px 32px var(--teal-glow);
+    }
+
+    .logo-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: white;
+      letter-spacing: 1px;
+    }
+
+    .logo-sub {
+      font-size: 13px;
+      color: var(--silver-dim);
+      margin-top: 4px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .form-group {
+      margin-bottom: 24px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--silver-dim);
+      margin-bottom: 8px;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 14px 18px;
+      background: var(--bg-surface);
+      border: 1px solid rgba(0, 212, 170, 0.1);
+      border-radius: 10px;
+      color: white;
+      font-family: var(--font-mono);
+      font-size: 15px;
+      outline: none;
+      transition: all 0.3s;
+    }
+
+    .form-group input:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 20px var(--teal-glow);
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, var(--teal), #00b894);
+      border: none;
+      border-radius: 10px;
+      color: var(--bg-deep);
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .login-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px var(--teal-glow);
+    }
+
+    .error-msg {
+      background: rgba(255, 59, 92, 0.1);
+      border: 1px solid rgba(255, 59, 92, 0.3);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: var(--red);
+      font-size: 13px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    /* Floating particles */
+    .particle {
+      position: fixed;
+      width: 2px;
+      height: 2px;
+      background: var(--teal);
+      border-radius: 50%;
+      opacity: 0.3;
+      animation: float linear infinite;
+      z-index: 0;
+    }
+
+    @keyframes float {
+      from { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+      10% { opacity: 0.3; }
+      90% { opacity: 0.3; }
+      to { transform: translateY(-10vh) rotate(720deg); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Floating particles -->
+  <script>
+    for (let i = 0; i < 30; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.left = Math.random() * 100 + '%';
+      p.style.animationDuration = (8 + Math.random() * 15) + 's';
+      p.style.animationDelay = (-Math.random() * 20) + 's';
+      p.style.width = p.style.height = (1 + Math.random() * 3) + 'px';
+      document.body.appendChild(p);
+    }
+  </script>
+
+  <div class="login-container">
+    <div class="login-card">
+      <div class="logo-section">
+        <div class="logo-icon">🎫</div>
+        <div class="logo-title">Giveaway HQ</div>
+        <div class="logo-sub">Dashboard Access</div>
+      </div>
+
+      <% if (error) { %>
+        <div class="error-msg"><%= error %></div>
+      <% } %>
+
+      <form method="POST" action="/login">
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" name="password" placeholder="Enter dashboard password" autofocus required>
+        </div>
+        <button type="submit" class="login-btn">Authenticate</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

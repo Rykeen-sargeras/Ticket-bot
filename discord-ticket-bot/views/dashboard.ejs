@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Giveaway HQ — Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav class="topnav">
+    <div class="nav-left">
+      <span class="nav-logo">🎫</span>
+      <span class="nav-title">Giveaway HQ</span>
+      <span class="nav-divider">|</span>
+      <span class="nav-page">Dashboard</span>
+    </div>
+    <div class="nav-right">
+      <span class="bot-status" id="botStatus">
+        <span class="status-dot"></span>
+        <span class="status-text">Checking...</span>
+      </span>
+      <a href="/logout" class="nav-link logout-btn">Logout</a>
+    </div>
+  </nav>
+
+  <main class="container">
+    <!-- Create Giveaway -->
+    <section class="card create-section">
+      <div class="card-header">
+        <h2>Create New Giveaway</h2>
+      </div>
+      <div class="create-form">
+        <input type="text" id="giveawayName" placeholder="Enter giveaway name..." class="text-input">
+        <button onclick="createGiveaway()" class="btn btn-teal">Create</button>
+      </div>
+    </section>
+
+    <!-- Giveaway List -->
+    <section class="card">
+      <div class="card-header">
+        <h2>All Giveaways</h2>
+        <span class="badge"><%= giveaways.length %></span>
+      </div>
+      
+      <% if (giveaways.length === 0) { %>
+        <div class="empty-state">
+          <p>No giveaways yet. Create one above!</p>
+        </div>
+      <% } else { %>
+        <div class="giveaway-grid">
+          <% giveaways.forEach(g => { %>
+            <a href="/giveaway/<%= g.id %>" class="giveaway-card">
+              <div class="gc-top">
+                <span class="gc-id">#<%= g.id %></span>
+                <span class="gc-status status-<%= g.status %>"><%= g.status.toUpperCase() %></span>
+              </div>
+              <div class="gc-name"><%= g.name %></div>
+              <div class="gc-meta">
+                <span><%= new Date(g.created_at).toLocaleDateString() %></span>
+                <% if (g.winner_username) { %>
+                  <span class="gc-winner">🏆 <%= g.winner_username %></span>
+                <% } %>
+              </div>
+            </a>
+          <% }) %>
+        </div>
+      <% } %>
+    </section>
+  </main>
+
+  <script>
+    async function createGiveaway() {
+      const name = document.getElementById('giveawayName').value.trim();
+      if (!name) return;
+      
+      const res = await fetch('/api/giveaway/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      
+      if (res.ok) {
+        window.location.reload();
+      }
+    }
+
+    document.getElementById('giveawayName').addEventListener('keydown', e => {
+      if (e.key === 'Enter') createGiveaway();
+    });
+
+    // Check bot status
+    async function checkBot() {
+      try {
+        const res = await fetch('/api/bot/status');
+        const data = await res.json();
+        const el = document.getElementById('botStatus');
+        if (data.ready) {
+          el.innerHTML = `<span class="status-dot online"></span><span class="status-text">${data.username}</span>`;
+        } else {
+          el.innerHTML = `<span class="status-dot offline"></span><span class="status-text">Bot Offline</span>`;
+        }
+      } catch(e) {
+        const el = document.getElementById('botStatus');
+        el.innerHTML = `<span class="status-dot offline"></span><span class="status-text">No Connection</span>`;
+      }
+    }
+    checkBot();
+    setInterval(checkBot, 30000);
+  </script>
+</body>
+</html>
