@@ -2,15 +2,25 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
-// Railway: set DATABASE_PATH env var to a volume mount like /data/giveaway.db
-// Local: defaults to ./data/giveaway.db
-const DB_PATH = process.env.DATABASE_PATH || path.join(__dirname, '..', 'data', 'giveaway.db');
+// Pick database location:
+// 1. DATABASE_PATH env var (if set)
+// 2. /tmp/giveaway.db (works on Railway without a volume)
+// 3. ./data/giveaway.db (local development)
+function getDbPath() {
+  if (process.env.DATABASE_PATH) return process.env.DATABASE_PATH;
+  if (process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_SERVICE_ID) return '/tmp/giveaway.db';
+  return path.join(__dirname, '..', 'data', 'giveaway.db');
+}
+
+const DB_PATH = getDbPath();
 
 // Auto-create the directory if it doesn't exist
 const dbDir = path.dirname(DB_PATH);
 if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
 }
+
+console.log(`📂 Database path: ${DB_PATH}`);
 
 let db;
 
