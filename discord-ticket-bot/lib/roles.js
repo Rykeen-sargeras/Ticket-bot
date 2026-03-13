@@ -20,7 +20,7 @@ const ROLE_CONFIG = [
   {
     name: 'Scooter Gang',
     envKey: 'ROLE_SCOOTER_GANG',
-    tickets: 1,
+    tickets: 2,
     color: '#44bbff',
     additive: false
   },
@@ -56,9 +56,18 @@ function calculateTickets(member) {
 
   for (const role of ROLE_CONFIG) {
     const roleId = process.env[role.envKey];
-    // Match by role ID (from env) or by role name (case-insensitive fallback)
-    const hasRole = (roleId && memberRoleIds.includes(roleId)) ||
-                    memberRoleNames.includes(role.name.toLowerCase());
+
+    let hasRole = false;
+
+    if (role.name === 'Server Booster') {
+      // Check multiple ways: env role ID, role name match, OR Discord's premiumSince
+      hasRole = (roleId && memberRoleIds.includes(roleId)) ||
+                memberRoleNames.some(n => n.includes('server booster') || n.includes('nitro booster') || n.includes('booster')) ||
+                !!member.premiumSince;
+    } else {
+      hasRole = (roleId && memberRoleIds.includes(roleId)) ||
+                memberRoleNames.includes(role.name.toLowerCase());
+    }
 
     if (!hasRole) continue;
 

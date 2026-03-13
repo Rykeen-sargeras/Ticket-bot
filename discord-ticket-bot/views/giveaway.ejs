@@ -67,13 +67,25 @@
 
       <!-- Winner Display -->
       <div class="winner-display" id="winnerDisplay" style="display:none;">
-        <div class="winner-card">
+        <div class="winner-card" id="winnerCard">
           <div class="winner-label">🏆 WINNER</div>
           <div class="winner-name" id="winnerName"></div>
           <div class="winner-details" id="winnerDetails"></div>
           <div class="winner-seed">
             Seed: <code id="winnerSeed"></code>
           </div>
+          <div class="winner-giveaway-name"><%= giveaway.name %></div>
+        </div>
+
+        <!-- Announce to Discord -->
+        <div class="announce-section">
+          <div class="announce-row">
+            <input type="text" id="prizeInput" placeholder="Enter the prize (e.g. $50 Gift Card, Free Merch...)" class="text-input">
+            <button onclick="announceWinner()" class="btn btn-red btn-lg" id="announceBtn">
+              📢 Announce Winner in Discord
+            </button>
+          </div>
+          <div class="announce-status" id="announceStatus"></div>
         </div>
       </div>
 
@@ -145,10 +157,12 @@
 
   </main>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script>
     const GIVEAWAY_ID = <%= giveaway.id %>;
     let allEntries = [];
     let isSpinning = false;
+    let lastWinnerData = null;
 
     // Load entries on page load
     async function loadEntries() {
@@ -165,7 +179,6 @@
         return;
       }
 
-      // Show all entries (each ticket = one slot)
       let html = '';
       allEntries.forEach((entry, i) => {
         const roleClass = entry.roleName.replace(/[^a-zA-Z]/g, '').toLowerCase();
@@ -207,7 +220,6 @@
 
       const seed = document.getElementById('seedInput').value.trim() || undefined;
 
-      // Call API to get deterministic result
       const res = await fetch(`/api/giveaway/${GIVEAWAY_ID}/spin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -223,21 +235,32 @@
         return;
       }
 
-      // Set the seed display
       document.getElementById('seedInput').value = data.seed;
 
-      // Run the highlight animation
-      await runSpinAnimation(data.winnerIndex, data.entries);
+      // Rebuild the spinner list using the EXACT entry order from the spin API
+      // This ensures the winnerIndex lines up with the DOM elements
+      allEntries = data.entries.map(e => ({
+        displayName: e.displayName,
+        username: e.username,
+        roleName: e.roleName,
+        ticketNumber: e.ticketNumber
+      }));
+      renderSpinnerList();
 
-      // Show winner
+      // Small delay so DOM is ready
+      await new Promise(r => setTimeout(r, 50));
+
+      await runSpinAnimation(data.winnerIndex);
+
       showWinner(data.winner, data.seed);
+      lastWinnerData = { winner: data.winner, seed: data.seed };
 
       btn.disabled = false;
       btn.textContent = 'RE-SPIN (New Seed)';
       isSpinning = false;
     }
 
-    async function runSpinAnimation(winnerIndex, entries) {
+    async function runSpinAnimation(winnerIndex) {
       const list = document.getElementById('spinnerList');
       const items = list.querySelectorAll('.spinner-entry');
       if (items.length === 0) return;
@@ -245,10 +268,10 @@
       const wrapper = document.getElementById('spinnerWrapper');
       wrapper.classList.add('spinning');
 
-      // Remove any previous highlights
       items.forEach(el => el.classList.remove('highlight', 'winner-highlight'));
 
-      const totalSteps = entries.length * 3 + winnerIndex; // 3 full passes + land on winner
+      // 3 full passes through all items, then land on the winner
+      const totalSteps = items.length * 3 + winnerIndex;
       let currentIndex = 0;
 
       return new Promise(resolve => {
@@ -257,31 +280,23 @@
         const maxDelay = 400;
 
         function tick() {
-          // Remove old highlight
           items.forEach(el => el.classList.remove('highlight'));
 
-          // Current position
           const idx = currentIndex % items.length;
           items[idx].classList.add('highlight');
-
-          // Scroll into view
           items[idx].scrollIntoView({ behavior: 'smooth', block: 'center' });
 
           currentIndex++;
           step++;
 
           if (step >= totalSteps) {
-            // Final — mark winner
             items[idx].classList.remove('highlight');
             items[idx].classList.add('winner-highlight');
             wrapper.classList.remove('spinning');
-            
-            // Dramatic pause then resolve
             setTimeout(resolve, 500);
             return;
           }
 
-          // Easing: start fast, slow down near the end
           const progress = step / totalSteps;
           const delay = baseDelay + (maxDelay - baseDelay) * Math.pow(progress, 3);
           setTimeout(tick, delay);
@@ -300,6 +315,54 @@
       document.getElementById('winnerSeed').textContent = seed;
 
       display.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function announceWinner() {
+      const btn = document.getElementById('announceBtn');
+      const status = document.getElementById('announceStatus');
+      const prize = document.getElementById('prizeInput').value.trim();
+
+      btn.disabled = true;
+      btn.textContent = '📸 Capturing screenshot...';
+      status.textContent = '';
+
+      try {
+        // Capture the winner card as an image
+        const winnerCard = document.getElementById('winnerCard');
+        const canvas = await html2canvas(winnerCard, {
+          backgroundColor: '#0d1525',
+          scale: 2,
+          useCORS: true,
+          logging: false
+        });
+        const imageBase64 = canvas.toDataURL('image/png');
+
+        btn.textContent = '📢 Posting to Discord...';
+
+        // Send to API
+        const res = await fetch(`/api/giveaway/${GIVEAWAY_ID}/announce`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prize, imageBase64 })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          status.innerHTML = '<span style="color: var(--teal);">✅ Winner announced in Discord!</span>';
+          btn.textContent = '✅ Announced!';
+          setTimeout(() => {
+            btn.textContent = '📢 Announce Winner in Discord';
+            btn.disabled = false;
+          }, 3000);
+        } else {
+          throw new Error(data.error || 'Failed to announce');
+        }
+      } catch (err) {
+        console.error('Announce error:', err);
+        status.innerHTML = `<span style="color: var(--red);">❌ ${err.message}</span>`;
+        btn.textContent = '📢 Announce Winner in Discord';
+        btn.disabled = false;
+      }
     }
 
     async function verifySpin() {

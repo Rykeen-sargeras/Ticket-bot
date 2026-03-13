@@ -12,7 +12,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // --- Middleware ---
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(session({
@@ -40,7 +40,8 @@ app.get('/login', (req, res) => {
 
 app.post('/login', (req, res) => {
   const { password } = req.body;
-  if (password === process.env.DASHBOARD_PASSWORD) {
+  const validPasswords = (process.env.DASHBOARD_PASSWORD || '').split(',').map(p => p.trim());
+  if (validPasswords.includes(password)) {
     req.session.authenticated = true;
     return res.redirect('/');
   }
@@ -199,6 +200,71 @@ app.get('/api/bot/status', requireAuth, (req, res) => {
     username: client?.user?.tag || null,
     guilds: client?.guilds?.cache?.size || 0
   });
+});
+
+// Announce winner to Discord with screenshot
+app.post('/api/giveaway/:id/announce', requireAuth, async (req, res) => {
+  const giveawayId = parseInt(req.params.id);
+  const giveaway = db.getGiveaway(giveawayId);
+  if (!giveaway) return res.status(404).json({ error: 'Not found' });
+
+  const { prize, imageBase64 } = req.body;
+  if (!giveaway.winner_username) {
+    return res.status(400).json({ error: 'No winner has been selected yet. Spin first!' });
+  }
+
+  const client = getClient();
+  if (!client || !isBotReady()) {
+    return res.status(503).json({ error: 'Bot is not connected' });
+  }
+
+  const channelId = process.env.GIVEAWAY_CHANNEL_ID;
+  if (!channelId) {
+    return res.status(400).json({ error: 'GIVEAWAY_CHANNEL_ID not set' });
+  }
+
+  try {
+    const guild = client.guilds.cache.get(process.env.GUILD_ID);
+    if (!guild) return res.status(400).json({ error: 'Guild not found' });
+
+    const channel = guild.channels.cache.get(channelId);
+    if (!channel) return res.status(400).json({ error: 'Channel not found' });
+
+    const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
+
+    // Build the embed
+    const embed = new EmbedBuilder()
+      .setTitle('🏆 GIVEAWAY WINNER 🏆')
+      .setDescription(
+        `**${giveaway.name}**\n\n` +
+        `🎉 Congratulations to **${giveaway.winner_username}**!\n\n` +
+        (prize ? `🎁 **Prize:** ${prize}\n\n` : '') +
+        `📋 **Details:**\n` +
+        `> Role: **${giveaway.winner_role}**\n` +
+        `> Ticket: \`${giveaway.winner_ticket_number}\`\n` +
+        `> Seed: \`${giveaway.seed}\`\n\n` +
+        `Anyone can verify this result using the seed above.`
+      )
+      .setColor(0xFFCC00)
+      .setTimestamp();
+
+    const files = [];
+
+    // Attach screenshot if provided
+    if (imageBase64) {
+      const imageBuffer = Buffer.from(imageBase64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+      const attachment = new AttachmentBuilder(imageBuffer, { name: 'winner.png' });
+      files.push(attachment);
+      embed.setImage('attachment://winner.png');
+    }
+
+    await channel.send({ embeds: [embed], files });
+
+    res.json({ success: true, message: 'Winner announced in Discord!' });
+  } catch (err) {
+    console.error('Announce error:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // --- Start server & bot ---

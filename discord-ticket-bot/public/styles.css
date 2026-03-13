@@ -423,14 +423,6 @@ body::before {
 
 /* ===== Winner Display ===== */
 .winner-display { margin-top: 24px; }
-.winner-card {
-  background: linear-gradient(135deg, rgba(255, 59, 92, 0.08), rgba(255, 204, 0, 0.05));
-  border: 1px solid rgba(255, 59, 92, 0.2);
-  border-radius: var(--radius);
-  padding: 28px;
-  text-align: center;
-  animation: winner-enter 0.5s ease;
-}
 @keyframes winner-enter {
   from { transform: scale(0.9); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
@@ -577,6 +569,51 @@ body::before {
   font-size: 12px;
 }
 
+/* ===== Announce Section ===== */
+.announce-section {
+  margin-top: 20px;
+}
+.announce-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.announce-row .text-input {
+  flex: 1;
+  min-width: 200px;
+}
+.announce-status {
+  margin-top: 10px;
+  font-size: 14px;
+  min-height: 20px;
+}
+
+/* Winner card — styled for screenshot */
+.winner-card {
+  position: relative;
+  background: linear-gradient(135deg, #0d1525 0%, #131d30 50%, #1a2740 100%);
+  border: 2px solid rgba(255, 204, 0, 0.3);
+  border-radius: var(--radius);
+  padding: 36px 40px;
+  text-align: center;
+  animation: winner-enter 0.5s ease;
+}
+.winner-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--red), #ffcc00, var(--teal));
+}
+.winner-giveaway-name {
+  font-size: 12px;
+  color: var(--silver-dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 12px;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 640px) {
   .container { padding: 16px 12px; }
@@ -589,4 +626,5 @@ body::before {
   .btn-lg { text-align: center; justify-content: center; }
   .winner-name { font-size: 24px; }
   .entry-row { flex-direction: column; align-items: flex-start; }
+  .announce-row { flex-direction: column; align-items: stretch; }
 }
